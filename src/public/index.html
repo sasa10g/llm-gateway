@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Gateway — Demo Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface-2: #252525;
+      --border: #333;
+      --text: #e5e5e5;
+      --text-muted: #888;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --user-bg: #2a2d5e;
+      --assistant-bg: #1e1e1e;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background 0.3s;
+    }
+
+    .status-dot.connected { background: var(--green); }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .provider-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--accent-hover);
+      font-weight: 500;
+    }
+
+    /* Connection panel */
+    .connect-panel {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .connect-panel input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .connect-panel input:focus { border-color: var(--accent); }
+
+    .btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-info {
+      background: transparent;
+      color: var(--accent-hover);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    .btn-info:hover { background: var(--surface-2); }
+
+    /* Chat area */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-container::-webkit-scrollbar { width: 6px; }
+    .chat-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Welcome + Instructions */
+    .welcome {
+      margin: auto;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    .welcome h2 {
+      font-size: 22px;
+      margin-bottom: 6px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .welcome > p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .instructions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .inst-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .inst-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-hover);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .inst-card pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      overflow-x: auto;
+      color: var(--text-muted);
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .inst-card pre .hl { color: var(--accent-hover); }
+    .inst-card pre .str { color: var(--green); }
+    .inst-card pre .key { color: var(--yellow); }
+    .inst-card pre .cmt { color: #555; }
+
+    .inst-card p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .inst-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .demo-keys {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .demo-key {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.2s;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    }
+
+    .demo-key:hover {
+      border-color: var(--accent);
+      color: var(--accent-hover);
+    }
+
+    .demo-key .model-tag {
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    /* Messages */
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 80%;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+
+    .message.user .message-avatar { background: var(--user-bg); }
+    .message.assistant .message-avatar { background: var(--accent); }
+
+    .message-body {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user .message-body {
+      background: var(--user-bg);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-body {
+      background: var(--surface-2);
+      border-bottom-left-radius: 4px;
+    }
+
+    .usage {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      padding-left: 44px;
+    }
+
+    /* Input area */
+    .input-area {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    .input-area textarea {
+      flex: 1;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      min-height: 42px;
+      max-height: 160px;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+
+    .input-area textarea:focus { border-color: var(--accent); }
+    .input-area textarea:disabled { opacity: 0.5; }
+
+    .send-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: var(--accent);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { background: var(--accent-hover); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn svg { width: 18px; height: 18px; }
+
+    @media (max-width: 700px) {
+      .connect-panel { flex-wrap: wrap; }
+      .connect-panel input { min-width: 100%; }
+      .instructions { grid-template-columns: 1fr; }
+      .message { max-width: 95%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <h1>LLM Gateway</h1>
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Disconnected</span>
+    </div>
+    <div class="header-right">
+      <span class="status-text" id="tenantLabel"></span>
+      <span class="provider-badge" id="providerBadge" style="display:none"></span>
+    </div>
+  </div>
+
+  <div class="connect-panel">
+    <input type="text" id="apiKeyInput" placeholder="Tenant API key (e.g. acme-secret-key-123)">
+    <button class="btn btn-primary" id="connectBtn" onclick="connect()">Connect</button>
+    <button class="btn btn-secondary" id="newChatBtn" onclick="newChat()" style="display:none">New Chat</button>
+  </div>
+
+  <div class="chat-container" id="chat">
+    <div class="welcome" id="welcome">
+      <h2>LLM Gateway Demo</h2>
+      <p>Multi-provider LLM gateway with streaming, ephemeral tokens, and tenant routing.</p>
+
+      <div class="instructions">
+
+        <div class="inst-card">
+          <h3>1. Quick Start</h3>
+          <p>Click a demo key below to auto-fill, then hit Connect:</p>
+          <div class="demo-keys">
+            <span class="demo-key" onclick="useKey('acme-secret-key-123')">acme-secret-key-123 <span class="model-tag">gpt-4o</span></span>
+            <span class="demo-key" onclick="useKey('globex-secret-key-456')">globex-secret-key-456 <span class="model-tag">gpt-4o-mini</span></span>
+          </div>
+        </div>
+
+        <div class="inst-card">
+          <h3>2. Supported Providers</h3>
+<pre><span class="hl">openai</span>       GPT-4o, GPT-4o-mini, o1 ...
+<span class="hl">anthropic</span>    Claude 4, Sonnet, Haiku ...
+<span class="hl">google</span>       Gemini 2.0, 1.5 Pro ...
+<span class="hl">openai-compat</span> Groq, Mistral, DeepSeek,
+               Ollama, Together, vLLM ...</pre>
+        </div>
+
+        <div class="inst-card">
+          <h3>3. Add a Tenant</h3>
+<pre><span class="cmt">// tenants.json</span>
+{
+  <span class="key">"tenant-myapp"</span>: {
+    <span class="key">"name"</span>: <span class="str">"My App"</span>,
+    <span class="key">"apiKey"</span>: <span class="str">"my-secret-key"</span>,
+    <span class="key">"provider"</span>: <span class="str">"anthropic"</span>,
+    <span class="key">"model"</span>: <span class="str">"claude-sonnet-4-20250514"</span>,
+    <span class="key">"systemPrompt"</span>: <span class="str">"You are..."</span>,
+    <span class="key">"maxTokens"</span>: 2048,
+    <span class="key">"rateLimit"</span>: 60
+  }
+}</pre>
+        </div>
+
+        <div class="inst-card">
+          <h3>4. Connect From Your App</h3>
+<pre><span class="cmt">// Step 1: Get WS token</span>
+<span class="hl">POST</span> /api/token
+Headers: { <span class="key">"x-api-key"</span>: <span class="str">"my-secret-key"</span> }
+
+<span class="cmt">// Step 2: Open WebSocket</span>
+ws://host:3000/ws?token=<span class="hl">&lt;token&gt;</span>
+
+<span class="cmt">// Step 3: Send message</span>
+{ <span class="key">"type"</span>: <span class="str">"message"</span>,
+  <span class="key">"content"</span>: <span class="str">"Hello!"</span> }
+
+<span class="cmt">// Receive streaming chunks:</span>
+{ <span class="key">"type"</span>: <span class="str">"chunk"</span>, <span class="key">"content"</span>: <span class="str">"Hi"</span> }
+{ <span class="key">"type"</span>: <span class="str">"done"</span>,  <span class="key">"usage"</span>: {...} }</pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <textarea id="messageInput" placeholder="Type a message... (Enter to send, Shift+Enter for new line)" rows="1" disabled></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+
+  <script>
+    let ws = null;
+    let conversationId = null;
+    let currentAssistantEl = null;
+    let isStreaming = false;
+
+    const chat = document.getElementById('chat');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const connectBtn = document.getElementById('connectBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const tenantLabel = document.getElementById('tenantLabel');
+    const providerBadge = document.getElementById('providerBadge');
+
+    function useKey(key) {
+      apiKeyInput.value = key;
+      apiKeyInput.focus();
+    }
+
+    messageInput.addEventListener('input', () => {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 160) + 'px';
+    });
+
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    async function connect() {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) return;
+
+      connectBtn.disabled = true;
+      connectBtn.textContent = 'Connecting...';
+
+      try {
+        const res = await fetch('/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Auth failed');
+        }
+
+        const data = await res.json();
+        conversationId = data.conversationId;
+        connectWebSocket(data.token, apiKey);
+      } catch (err) {
+        alert('Connection failed: ' + err.message);
+        connectBtn.disabled = false;
+        connectBtn.textContent = 'Connect';
+      }
+    }
+
+    function connectWebSocket(token, apiKey) {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws?token=${token}`);
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        switch (msg.type) {
+          case 'connected':
+            setConnected(true, msg.tenant, msg.provider, msg.model);
+            const welcome = document.getElementById('welcome');
+            if (welcome) welcome.remove();
+            break;
+
+          case 'chunk':
+            if (!currentAssistantEl) {
+              currentAssistantEl = addMessage('assistant', '');
+            }
+            const body = currentAssistantEl.querySelector('.message-body');
+            body.textContent += msg.content;
+            scrollToBottom();
+            break;
+
+          case 'done':
+            if (msg.usage) {
+              const usageEl = document.createElement('div');
+              usageEl.className = 'usage';
+              usageEl.textContent = `tokens: ${msg.usage.promptTokens} prompt + ${msg.usage.completionTokens} completion = ${msg.usage.totalTokens} total`;
+              currentAssistantEl.parentElement.appendChild(usageEl);
+            }
+            currentAssistantEl = null;
+            isStreaming = false;
+            setInputEnabled(true);
+            scrollToBottom();
+            break;
+
+          case 'error':
+            addSystemMessage('Error: ' + msg.message);
+            currentAssistantEl = null;
+            isStreaming = false;
+            setInputEnabled(true);
+            break;
+        }
+      };
+
+      ws.onclose = (e) => {
+        setConnected(false);
+        setInputEnabled(false);
+        if (e.code !== 1000) {
+          addSystemMessage(`Disconnected (code: ${e.code}). Click "New Chat" to reconnect.`);
+        }
+        newChatBtn.style.display = 'inline-block';
+      };
+
+      ws.onerror = () => {};
+      ws._apiKey = apiKey;
+    }
+
+    function setConnected(connected, tenantName, provider, model) {
+      statusDot.classList.toggle('connected', connected);
+      statusText.textContent = connected ? 'Connected' : 'Disconnected';
+      tenantLabel.textContent = connected ? tenantName : '';
+      connectBtn.disabled = connected;
+      connectBtn.textContent = connected ? 'Connected' : 'Connect';
+      apiKeyInput.disabled = connected;
+      newChatBtn.style.display = connected ? 'inline-block' : 'none';
+
+      if (connected && provider && model) {
+        providerBadge.textContent = `${provider} / ${model}`;
+        providerBadge.style.display = 'inline-block';
+      } else {
+        providerBadge.style.display = 'none';
+      }
+
+      setInputEnabled(connected);
+    }
+
+    function setInputEnabled(enabled) {
+      messageInput.disabled = !enabled;
+      sendBtn.disabled = !enabled;
+      if (enabled) messageInput.focus();
+    }
+
+    function sendMessage() {
+      const content = messageInput.value.trim();
+      if (!content || !ws || ws.readyState !== WebSocket.OPEN || isStreaming) return;
+
+      addMessage('user', content);
+      ws.send(JSON.stringify({ type: 'message', content }));
+
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      isStreaming = true;
+      setInputEnabled(false);
+    }
+
+    function addMessage(role, content) {
+      const wrapper = document.createElement('div');
+      const msgEl = document.createElement('div');
+      msgEl.className = `message ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = role === 'user' ? 'U' : 'AI';
+
+      const body = document.createElement('div');
+      body.className = 'message-body';
+      body.textContent = content;
+
+      msgEl.appendChild(avatar);
+      msgEl.appendChild(body);
+      wrapper.appendChild(msgEl);
+      chat.appendChild(wrapper);
+      scrollToBottom();
+      return msgEl;
+    }
+
+    function addSystemMessage(text) {
+      const el = document.createElement('div');
+      el.style.cssText = 'text-align:center;font-size:12px;color:var(--text-muted);padding:8px;';
+      el.textContent = text;
+      chat.appendChild(el);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function newChat() {
+      if (ws) ws.close(1000);
+      chat.innerHTML = '';
+      currentAssistantEl = null;
+      isStreaming = false;
+      conversationId = null;
+
+      const apiKey = apiKeyInput.value.trim();
+      if (apiKey) {
+        connectBtn.disabled = false;
+        connectBtn.textContent = 'Connect';
+        apiKeyInput.disabled = false;
+        connect();
+      }
+    }
+
+    apiKeyInput.focus();
+  </script>
+</body>
+</html>

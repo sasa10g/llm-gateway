@@ -1,0 +1,22 @@
+{
+  "tenants": {
+    "tenant-acme": {
+      "name": "Acme Corp",
+      "apiKey": "acme-secret-key-123",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "systemPrompt": "You are a helpful assistant for Acme Corp. Be concise and professional.",
+      "maxTokens": 2048,
+      "rateLimit": 60
+    },
+    "tenant-globex": {
+      "name": "Globex Inc",
+      "apiKey": "globex-secret-key-456",
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "systemPrompt": "You are a support agent for Globex products. Be friendly and thorough.",
+      "maxTokens": 1024,
+      "rateLimit": 30
+    }
+  }
+}
