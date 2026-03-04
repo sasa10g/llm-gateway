@@ -408,8 +408,9 @@
           <h3>1. Quick Start</h3>
           <p>Click a demo key below to auto-fill, then hit Connect:</p>
           <div class="demo-keys">
-            <span class="demo-key" onclick="useKey('acme-secret-key-123')">acme-secret-key-123 <span class="model-tag">gpt-4o</span></span>
-            <span class="demo-key" onclick="useKey('globex-secret-key-456')">globex-secret-key-456 <span class="model-tag">gpt-4o-mini</span></span>
+            <span class="demo-key" onclick="useKey('acme-secret-key-123')">acme-secret-key-123 <span class="model-tag">gpt-4.1-mini</span></span>
+            <span class="demo-key" onclick="useKey('globex-secret-key-456')">globex-secret-key-456 <span class="model-tag">gpt-4.1-mini</span></span>
+            <span class="demo-key" onclick="useKey('codex-secret-key-789')">codex-secret-key-789 <span class="model-tag">o4-mini</span></span>
           </div>
         </div>
 
@@ -454,6 +455,43 @@ ws://host:3000/ws?token=<span class="hl">&lt;token&gt;</span>
 <span class="cmt">// Receive streaming chunks:</span>
 { <span class="key">"type"</span>: <span class="str">"chunk"</span>, <span class="key">"content"</span>: <span class="str">"Hi"</span> }
 { <span class="key">"type"</span>: <span class="str">"done"</span>,  <span class="key">"usage"</span>: {...} }</pre>
+        </div>
+
+        <div class="inst-card full-width">
+          <h3>5. Initial Context (preload chat history)</h3>
+          <p>Pass existing conversation history when creating the token — the LLM sees it all from the start:</p>
+<pre><span class="hl">POST</span> /api/token
+{
+  <span class="key">"initialContext"</span>: <span class="str">"Team chat for Project Alpha.\nMembers: Sasa (lead), Marko (backend).\nStack: Angular + NestJS, PostgreSQL, Stripe."</span>,
+
+  <span class="key">"initialMessages"</span>: [
+    { <span class="key">"role"</span>: <span class="str">"user"</span>, <span class="key">"content"</span>: <span class="str">"Marko: Cart API is pushed"</span> },
+    { <span class="key">"role"</span>: <span class="str">"user"</span>, <span class="key">"content"</span>: <span class="str">"Ana: Frontend cart is ready"</span> },
+    { <span class="key">"role"</span>: <span class="str">"user"</span>, <span class="key">"content"</span>: <span class="str">"Sasa: Let's handle empty cart edge cases"</span> }
+  ]
+}</pre>
+          <p>The LLM receives the full history on every message — no need to resend it each time.</p>
+        </div>
+
+        <div class="inst-card full-width">
+          <h3>6. Per-message Context (runtime metadata)</h3>
+          <p>Attach metadata to any message — user info, current page, selected items, etc.:</p>
+<pre><span class="cmt">// Send via WebSocket</span>
+{
+  <span class="key">"type"</span>: <span class="str">"message"</span>,
+  <span class="key">"content"</span>: <span class="str">"What can you tell me about this order?"</span>,
+  <span class="key">"context"</span>: {
+    <span class="key">"userId"</span>: <span class="str">"user-42"</span>,
+    <span class="key">"userName"</span>: <span class="str">"Sasa"</span>,
+    <span class="key">"currentPage"</span>: <span class="str">"/orders/12345"</span>,
+    <span class="key">"selectedOrder"</span>: {
+      <span class="key">"id"</span>: <span class="str">"ORD-12345"</span>,
+      <span class="key">"status"</span>: <span class="str">"shipped"</span>,
+      <span class="key">"total"</span>: 1299.99
+    }
+  }
+}</pre>
+          <p>Context is injected per-message — send different context each time or omit it entirely.</p>
         </div>
 
       </div>

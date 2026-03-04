@@ -4,7 +4,7 @@
       "name": "Acme Corp",
       "apiKey": "acme-secret-key-123",
       "provider": "openai",
-      "model": "gpt-4o",
+      "model": "gpt-4.1-mini",
       "systemPrompt": "You are a helpful assistant for Acme Corp. Be concise and professional.",
       "maxTokens": 2048,
       "rateLimit": 60
@@ -13,9 +13,18 @@
       "name": "Globex Inc",
       "apiKey": "globex-secret-key-456",
       "provider": "openai",
-      "model": "gpt-4o-mini",
+      "model": "gpt-4.1-mini",
       "systemPrompt": "You are a support agent for Globex products. Be friendly and thorough.",
       "maxTokens": 1024,
+      "rateLimit": 30
+    },
+    "tenant-codex": {
+      "name": "Codex Dev",
+      "apiKey": "codex-secret-key-789",
+      "provider": "openai",
+      "model": "o4-mini",
+      "systemPrompt": "You are an expert coding assistant. Provide clean, efficient code with clear explanations.",
+      "maxTokens": 4096,
       "rateLimit": 30
     }
   }

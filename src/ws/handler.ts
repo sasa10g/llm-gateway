@@ -2,7 +2,7 @@ import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { validateToken, revokeToken } from '../store/tokens.js';
-import { getHistory, appendMessage } from '../store/conversations.js';
+import { getHistory, appendMessage, getInitialContext } from '../store/conversations.js';
 import { getTenant } from '../tenants/router.js';
 import { streamCompletion, type ChatMessage } from './stream.js';
 
@@ -50,7 +50,7 @@ export function setupWebSocket(server: HttpServer): WebSocketServer {
     let isStreaming = false;
 
     ws.on('message', async (raw: Buffer) => {
-      let msg: { type: string; content?: string };
+      let msg: { type: string; content?: string; context?: Record<string, unknown> };
       try {
         msg = JSON.parse(raw.toString());
       } catch {
@@ -74,8 +74,38 @@ export function setupWebSocket(server: HttpServer): WebSocketServer {
       await appendMessage(conversationId, 'user', msg.content);
 
       // Build message history for LLM provider
+      const messages: ChatMessage[] = [];
+
+      // Prepend initial context (set at token creation time)
+      const initCtx = await getInitialContext(conversationId);
+      if (initCtx) {
+        if (initCtx.context) {
+          messages.push({ role: 'system', content: `[Initial Context]\n${initCtx.context}` });
+        }
+        if (initCtx.messages && initCtx.messages.length > 0) {
+          for (const m of initCtx.messages) {
+            messages.push({ role: m.role, content: m.content });
+          }
+        }
+      }
+
+      // Append conversation history (messages exchanged via gateway)
       const history = await getHistory(conversationId);
-      const messages: ChatMessage[] = history.map(({ role, content }) => ({ role, content }));
+      for (const { role, content } of history) {
+        messages.push({ role, content });
+      }
+
+      // Inject per-message runtime context before the latest user message
+      if (msg.context && Object.keys(msg.context).length > 0) {
+        const contextBlock = Object.entries(msg.context)
+          .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+          .join('\n');
+
+        messages.splice(messages.length - 1, 0, {
+          role: 'system',
+          content: `[Context]\n${contextBlock}`,
+        });
+      }
 
       await streamCompletion(tenant, messages, {
         onChunk(text: string) {
